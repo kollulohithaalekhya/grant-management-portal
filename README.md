@@ -161,3 +161,12 @@ To reset the database: `npm run seed` (clears and re-seeds all collections).
 
 **Backend:** Node.js · Express · NeDB · JWT · bcryptjs · Helmet · express-validator  
 **Frontend:** React 18 · Vite · TypeScript · Tailwind CSS · React Router v6 · Axios · React Hook Form · React Hot Toast · Lucide Icons
+
+---
+
+## 🎥 Project Demo Video
+
+Watch the complete project demonstration here:
+
+**Google Drive:**  
+https://drive.google.com/file/d/1X7_TY0mxAsgznbOu7nt-pMj3egBovZXW/view?usp=sharing
