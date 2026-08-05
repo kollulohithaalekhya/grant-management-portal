@@ -1,7 +1,16 @@
 node_modules/
 dist/
+build/
+
+# Local environment files. `.env.example` and `.env.test` are committed.
 .env
-*.db
-data/
+.env.local
+.env.*.local
+
+# Test + tooling output
+coverage/
+.tmp/
+.nyc_output/
+
 .DS_Store
 *.log

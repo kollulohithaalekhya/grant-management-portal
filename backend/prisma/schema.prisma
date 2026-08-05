@@ -1,0 +1,167 @@
+// Secure Grant Management Portal — PostgreSQL schema
+// Managed with Prisma Migrate. See prisma/migrations for the generated SQL.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum AuthProvider {
+  LOCAL
+  GOOGLE
+}
+
+enum GrantStatus {
+  DRAFT
+  OPEN
+  CLOSED
+}
+
+enum ApplicationStatus {
+  PENDING
+  UNDER_REVIEW
+  APPROVED
+  REJECTED
+}
+
+enum NotificationType {
+  SUCCESS
+  ERROR
+  INFO
+  WARNING
+}
+
+/// Catalogue of assignable roles (ADMIN, GRANT_MANAGER, APPLICANT).
+model Role {
+  id          String     @id @default(uuid()) @db.Uuid
+  name        String     @unique
+  description String?
+  createdAt   DateTime   @default(now()) @map("created_at")
+  users       UserRole[]
+
+  @@map("roles")
+}
+
+model User {
+  id         String       @id @default(uuid()) @db.Uuid
+  name       String
+  email      String       @unique
+  /// Null for accounts created through an OAuth provider.
+  password   String?
+  /// How the account was originally created.
+  provider   AuthProvider @default(LOCAL)
+  /// Subject id from the OAuth provider; also set when a password account
+  /// links a verified Google identity.
+  providerId String?      @unique @map("provider_id")
+  avatar     String?
+  isActive   Boolean      @default(true) @map("is_active")
+  createdAt  DateTime     @default(now()) @map("created_at")
+  updatedAt  DateTime     @updatedAt @map("updated_at")
+
+  roles                UserRole[]
+  grants               Grant[]        @relation("GrantCreator")
+  applications         Application[]  @relation("ApplicationApplicant")
+  reviewedApplications Application[]  @relation("ApplicationReviewer")
+  notifications        Notification[]
+  refreshTokens        RefreshToken[]
+
+  @@index([provider])
+  @@map("users")
+}
+
+/// Many-to-many join between users and roles.
+model UserRole {
+  userId     String   @map("user_id") @db.Uuid
+  roleId     String   @map("role_id") @db.Uuid
+  assignedAt DateTime @default(now()) @map("assigned_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  role Role @relation(fields: [roleId], references: [id], onDelete: Cascade)
+
+  @@id([userId, roleId])
+  @@index([roleId])
+  @@map("user_roles")
+}
+
+model Grant {
+  id          String      @id @default(uuid()) @db.Uuid
+  title       String
+  description String
+  amount      Decimal     @db.Decimal(14, 2)
+  deadline    DateTime
+  status      GrantStatus @default(OPEN)
+  category    String
+  eligibility String
+  createdById String      @map("created_by") @db.Uuid
+  createdAt   DateTime    @default(now()) @map("created_at")
+  updatedAt   DateTime    @updatedAt @map("updated_at")
+
+  createdBy    User          @relation("GrantCreator", fields: [createdById], references: [id], onDelete: Restrict)
+  applications Application[]
+
+  @@index([status])
+  @@index([createdById])
+  @@index([createdAt])
+  @@map("grants")
+}
+
+model Application {
+  id                 String            @id @default(uuid()) @db.Uuid
+  grantId            String            @map("grant_id") @db.Uuid
+  applicantId        String            @map("applicant_id") @db.Uuid
+  status             ApplicationStatus @default(PENDING)
+  projectTitle       String            @map("project_title")
+  projectDescription String            @map("project_description")
+  requestedAmount    Decimal           @map("requested_amount") @db.Decimal(14, 2)
+  organizationName   String            @map("organization_name")
+  contactEmail       String            @map("contact_email")
+  documents          String[]          @default([])
+  reviewNotes        String?           @map("review_notes")
+  reviewedById       String?           @map("reviewed_by") @db.Uuid
+  reviewedAt         DateTime?         @map("reviewed_at")
+  createdAt          DateTime          @default(now()) @map("created_at")
+  updatedAt          DateTime          @updatedAt @map("updated_at")
+
+  grant      Grant @relation(fields: [grantId], references: [id], onDelete: Cascade)
+  applicant  User  @relation("ApplicationApplicant", fields: [applicantId], references: [id], onDelete: Cascade)
+  reviewedBy User? @relation("ApplicationReviewer", fields: [reviewedById], references: [id], onDelete: SetNull)
+
+  /// One application per applicant per grant.
+  @@unique([grantId, applicantId])
+  @@index([status])
+  @@index([applicantId])
+  @@map("applications")
+}
+
+model Notification {
+  id        String           @id @default(uuid()) @db.Uuid
+  userId    String           @map("user_id") @db.Uuid
+  title     String
+  message   String
+  type      NotificationType @default(INFO)
+  isRead    Boolean          @default(false) @map("is_read")
+  createdAt DateTime         @default(now()) @map("created_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, isRead])
+  @@map("notifications")
+}
+
+model RefreshToken {
+  id        String    @id @default(uuid()) @db.Uuid
+  token     String    @unique
+  userId    String    @map("user_id") @db.Uuid
+  expiresAt DateTime  @map("expires_at")
+  revokedAt DateTime? @map("revoked_at")
+  createdAt DateTime  @default(now()) @map("created_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("refresh_tokens")
+}
