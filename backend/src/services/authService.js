@@ -103,4 +103,4 @@ const logout = async ({ refreshToken, tokenPayload }) => {
   }
 };
 
-module.exports = { register, login, refresh, logout, issueSession, storeRefreshToken };
+module.exports = { register, login, refresh, logout, issueSession };

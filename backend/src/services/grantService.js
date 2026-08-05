@@ -165,15 +165,4 @@ const getStats = async (user) => {
   };
 };
 
-module.exports = {
-  list,
-  getById,
-  create,
-  update,
-  remove,
-  getStats,
-  assertCanManage,
-  assertCanReviewGrant,
-  isAdmin,
-  isGrantManager,
-};
+module.exports = { list, getById, create, update, remove, getStats, assertCanReviewGrant };

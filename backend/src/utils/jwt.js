@@ -45,8 +45,6 @@ const getTokenExpiry = (token) => {
 };
 
 module.exports = {
-  generateAccessToken,
-  generateRefreshToken,
   verifyAccessToken,
   verifyRefreshToken,
   generateTokenPair,

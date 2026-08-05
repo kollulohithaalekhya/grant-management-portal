@@ -216,13 +216,4 @@ const withdraw = async (user, id) => {
   await prisma.application.delete({ where: { id } });
 };
 
-module.exports = {
-  list,
-  listForGrant,
-  getById,
-  submit,
-  review,
-  withdraw,
-  visibilityFilter,
-  REVIEW_STATUSES,
-};
+module.exports = { list, listForGrant, getById, submit, review, withdraw };

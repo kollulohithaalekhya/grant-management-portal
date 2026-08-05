@@ -124,7 +124,6 @@ module.exports = {
   withRoles,
   findById,
   findByEmail,
-  resolveRoles,
   createUser,
   listUsers,
   replaceUserRoles,

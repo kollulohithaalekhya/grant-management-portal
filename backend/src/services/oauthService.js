@@ -149,10 +149,4 @@ const handleCallback = async ({ code, state }) => {
   return { ...session, redirectTo: stored.redirectTo || null };
 };
 
-module.exports = {
-  buildAuthorizationUrl,
-  exchangeCodeForTokens,
-  fetchGoogleProfile,
-  findOrCreateUser,
-  handleCallback,
-};
+module.exports = { buildAuthorizationUrl, handleCallback };

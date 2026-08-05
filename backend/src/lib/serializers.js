@@ -54,13 +54,9 @@ const serializeApplication = (application) => {
   };
 };
 
-const serializeNotification = (notification) => notification;
-
 module.exports = {
-  toNumber,
   roleNames,
   serializeUser,
   serializeGrant,
   serializeApplication,
-  serializeNotification,
 };

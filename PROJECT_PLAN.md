@@ -262,7 +262,7 @@ every route that touches it.
 | Function coverage | ≥ 70% | 92.95% |
 | Line coverage | ≥ 70% | 95.37% |
 | Compose services healthy | 4 | 4 |
-| NeDB references | 0 | 0 |
+| NeDB in code, dependencies or lockfile | 0 | 0 |
 
 ---
 
