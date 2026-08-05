@@ -1,139 +1,97 @@
-const bcrypt = require('bcryptjs');
-const { v4: uuidv4 } = require('uuid');
-const { generateTokenPair, verifyRefreshToken } = require('../utils/jwt');
-const { sendSuccess, sendError } = require('../utils/response');
-const db = require('../db');
+const config = require('../config');
+const authService = require('../services/authService');
+const oauthService = require('../services/oauthService');
+const { sendSuccess } = require('../utils/response');
 
 // POST /api/auth/register
 const register = async (req, res, next) => {
   try {
-    const { name, email, password } = req.body;
-
-    const existing = await db.users.findOne({ email: email.toLowerCase() });
-    if (existing) {
-      return sendError(res, 'Email already registered', 409);
-    }
-
-    const hashedPassword = await bcrypt.hash(password, 12);
-    const now = new Date().toISOString();
-
-    const user = await db.users.insert({
-      _id: uuidv4(),
-      name,
-      email: email.toLowerCase(),
-      password: hashedPassword,
-      role: 'APPLICANT', // default role
-      provider: 'local',
-      avatar: null,
-      isActive: true,
-      createdAt: now,
-      updatedAt: now,
-    });
-
-    const { password: _, ...safeUser } = user;
-    const tokens = generateTokenPair(user);
-
-    // Store refresh token
-    await db.refreshTokens.insert({
-      _id: uuidv4(),
-      token: tokens.refreshToken,
-      userId: user._id,
-      createdAt: now,
-    });
-
-    return sendSuccess(res, { user: safeUser, ...tokens }, 'Registration successful', 201);
+    const session = await authService.register(req.body);
+    return sendSuccess(res, session, 'Registration successful', 201);
   } catch (err) {
-    next(err);
+    return next(err);
   }
 };
 
 // POST /api/auth/login
 const login = async (req, res, next) => {
   try {
-    const { email, password } = req.body;
-
-    const user = await db.users.findOne({ email: email.toLowerCase() });
-    if (!user || user.provider !== 'local') {
-      return sendError(res, 'Invalid credentials', 401);
-    }
-
-    if (!user.isActive) {
-      return sendError(res, 'Account is deactivated', 403);
-    }
-
-    const isMatch = await bcrypt.compare(password, user.password);
-    if (!isMatch) {
-      return sendError(res, 'Invalid credentials', 401);
-    }
-
-    const { password: _, ...safeUser } = user;
-    const tokens = generateTokenPair(user);
-
-    // Store refresh token
-    await db.refreshTokens.insert({
-      _id: uuidv4(),
-      token: tokens.refreshToken,
-      userId: user._id,
-      createdAt: new Date().toISOString(),
-    });
-
-    return sendSuccess(res, { user: safeUser, ...tokens }, 'Login successful');
+    const session = await authService.login(req.body);
+    return sendSuccess(res, session, 'Login successful');
   } catch (err) {
-    next(err);
+    return next(err);
   }
 };
 
 // POST /api/auth/refresh
 const refresh = async (req, res, next) => {
   try {
-    const { refreshToken } = req.body;
-    if (!refreshToken) return sendError(res, 'Refresh token required', 400);
-
-    // Check DB
-    const stored = await db.refreshTokens.findOne({ token: refreshToken });
-    if (!stored) return sendError(res, 'Invalid refresh token', 401);
-
-    const decoded = verifyRefreshToken(refreshToken);
-    const user = await db.users.findOne({ _id: decoded.id });
-    if (!user || !user.isActive) return sendError(res, 'User not found', 401);
-
-    // Rotate: delete old, issue new
-    await db.refreshTokens.remove({ token: refreshToken });
-
-    const tokens = generateTokenPair(user);
-    await db.refreshTokens.insert({
-      _id: uuidv4(),
-      token: tokens.refreshToken,
-      userId: user._id,
-      createdAt: new Date().toISOString(),
-    });
-
-    const { password: _, ...safeUser } = user;
-    return sendSuccess(res, { user: safeUser, ...tokens }, 'Token refreshed');
+    const session = await authService.refresh(req.body.refreshToken);
+    return sendSuccess(res, session, 'Token refreshed');
   } catch (err) {
-    if (err.name === 'TokenExpiredError' || err.name === 'JsonWebTokenError') {
-      return sendError(res, 'Invalid or expired refresh token', 401);
-    }
-    next(err);
+    return next(err);
   }
 };
 
 // POST /api/auth/logout
 const logout = async (req, res, next) => {
   try {
-    const { refreshToken } = req.body;
-    if (refreshToken) {
-      await db.refreshTokens.remove({ token: refreshToken });
-    }
+    await authService.logout({
+      refreshToken: req.body.refreshToken,
+      tokenPayload: req.tokenPayload,
+    });
     return sendSuccess(res, null, 'Logged out successfully');
   } catch (err) {
-    next(err);
+    return next(err);
   }
 };
 
 // GET /api/auth/me
-const me = async (req, res) => {
-  return sendSuccess(res, { user: req.user });
+const me = async (req, res) => sendSuccess(res, { user: req.user });
+
+// GET /api/auth/google — start the Google OAuth 2.0 authorization code flow
+const googleRedirect = async (req, res, next) => {
+  try {
+    const { url } = await oauthService.buildAuthorizationUrl({ redirectTo: req.query.redirectTo });
+    return res.redirect(url);
+  } catch (err) {
+    return next(err);
+  }
 };
 
-module.exports = { register, login, refresh, logout, me };
+/**
+ * GET /api/auth/google/callback — Google redirects the browser here.
+ *
+ * Tokens travel back to the SPA in the URL fragment: fragments are not sent to
+ * servers and are kept out of proxy/access logs and the Referer header.
+ */
+const googleCallback = async (req, res, next) => {
+  const failureRedirect = (message) =>
+    res.redirect(`${config.clientUrl}/oauth/callback#error=${encodeURIComponent(message)}`);
+
+  try {
+    if (req.query.error) {
+      return failureRedirect(String(req.query.error));
+    }
+
+    const session = await oauthService.handleCallback({
+      code: req.query.code,
+      state: req.query.state,
+    });
+
+    const fragment = new URLSearchParams({
+      accessToken: session.accessToken,
+      refreshToken: session.refreshToken,
+    });
+    if (session.redirectTo) fragment.set('redirectTo', session.redirectTo);
+
+    return res.redirect(`${config.clientUrl}/oauth/callback#${fragment.toString()}`);
+  } catch (err) {
+    if (err.name === 'ApiError') {
+      return failureRedirect(err.message);
+    }
+    return next(err);
+  }
+};
+
+module.exports = { register, login, refresh, logout, me, googleRedirect, googleCallback };
