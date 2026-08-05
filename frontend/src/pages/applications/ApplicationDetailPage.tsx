@@ -1,10 +1,11 @@
 import React, { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useForm } from 'react-hook-form';
-import { ArrowLeft, FileText, User, Calendar, DollarSign, Building, Mail, CheckCircle, XCircle, Clock } from 'lucide-react';
+import { ArrowLeft, User, Calendar, DollarSign, Building, Mail, CheckCircle, XCircle, Clock } from 'lucide-react';
 import { Application } from '../../types';
 import { applicationsAPI } from '../../api/services';
 import { useAuth } from '../../context/AuthContext';
+import { hasRole } from '../../utils/roles';
 import { Button, Badge, Card, Spinner, Select, Textarea } from '../../components/ui';
 import { formatCurrency, formatDate, formatDateTime } from '../../utils/helpers';
 import toast from 'react-hot-toast';
@@ -20,9 +21,9 @@ const ApplicationDetailPage: React.FC = () => {
   const [reviewing, setReviewing] = useState(false);
   const [showReviewForm, setShowReviewForm] = useState(false);
 
-  const isReviewer = user?.role === 'ADMIN' || user?.role === 'GRANT_MANAGER';
+  const isReviewer = hasRole(user, 'ADMIN', 'GRANT_MANAGER');
 
-  const { register, handleSubmit, formState: { errors } } = useForm<ReviewForm>({
+  const { register, handleSubmit } = useForm<ReviewForm>({
     defaultValues: { status: 'UNDER_REVIEW', reviewNotes: '' },
   });
 
@@ -86,7 +87,7 @@ const ApplicationDetailPage: React.FC = () => {
                 {statusIcon}
                 <Badge label={app.status} status={app.status} />
               </div>
-              {user?.role === 'APPLICANT' && app.status === 'PENDING' && (
+              {hasRole(user, 'APPLICANT') && app.status === 'PENDING' && (
                 <Button variant="danger" size="sm" onClick={handleWithdraw}>Withdraw</Button>
               )}
             </div>

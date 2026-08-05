@@ -4,8 +4,9 @@ import { Plus, Search, Filter, Award, Calendar, DollarSign, Users } from 'lucide
 import { Grant } from '../../types';
 import { grantsAPI } from '../../api/services';
 import { useAuth } from '../../context/AuthContext';
-import { Button, Badge, Card, Spinner, EmptyState, Pagination, Input, Select } from '../../components/ui';
-import { formatCurrency, formatDate, daysUntilDeadline } from '../../utils/helpers';
+import { hasRole } from '../../utils/roles';
+import { Button, Badge, Card, Spinner, EmptyState, Pagination, Select } from '../../components/ui';
+import { formatCurrency, daysUntilDeadline } from '../../utils/helpers';
 import toast from 'react-hot-toast';
 
 const CATEGORIES = [
@@ -36,7 +37,7 @@ const GrantsPage: React.FC = () => {
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
 
-  const canCreate = user?.role === 'ADMIN' || user?.role === 'GRANT_MANAGER';
+  const canCreate = hasRole(user, 'ADMIN', 'GRANT_MANAGER');
 
   const fetchGrants = async () => {
     setLoading(true);
@@ -126,7 +127,7 @@ const GrantsPage: React.FC = () => {
             {grants.map((grant) => {
               const days = daysUntilDeadline(grant.deadline);
               return (
-                <Card key={grant._id} className="flex flex-col hover:shadow-md transition-shadow">
+                <Card key={grant.id} className="flex flex-col hover:shadow-md transition-shadow">
                   <div className="flex items-start justify-between mb-3">
                     <div className="w-10 h-10 bg-primary-50 rounded-lg flex items-center justify-center">
                       <Award className="w-5 h-5 text-primary-600" />
@@ -154,14 +155,14 @@ const GrantsPage: React.FC = () => {
                   </div>
 
                   <div className="flex gap-2 mt-auto pt-4 border-t border-gray-100">
-                    <Link to={`/grants/${grant._id}`} className="flex-1">
+                    <Link to={`/grants/${grant.id}`} className="flex-1">
                       <Button variant="secondary" className="w-full" size="sm">View Details</Button>
                     </Link>
                     {canCreate && (
-                      <Button variant="ghost" size="sm" onClick={() => navigate(`/grants/${grant._id}/edit`)}>Edit</Button>
+                      <Button variant="ghost" size="sm" onClick={() => navigate(`/grants/${grant.id}/edit`)}>Edit</Button>
                     )}
-                    {user?.role === 'ADMIN' && (
-                      <Button variant="danger" size="sm" onClick={() => handleDelete(grant._id)}>Del</Button>
+                    {hasRole(user, 'ADMIN') && (
+                      <Button variant="danger" size="sm" onClick={() => handleDelete(grant.id)}>Del</Button>
                     )}
                   </div>
                 </Card>

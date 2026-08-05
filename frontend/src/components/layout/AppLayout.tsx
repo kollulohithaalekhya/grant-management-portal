@@ -1,14 +1,16 @@
 import React, { useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import {
-  LayoutDashboard, FileText, Users, Bell, Settings, LogOut,
-  ChevronLeft, ChevronRight, Menu, X, Award,
+  LayoutDashboard, FileText, Users, Bell, LogOut,
+  ChevronLeft, ChevronRight, Menu, Award,
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
-import { cn, getInitials, statusColors } from '../../utils/helpers';
+import { Role } from '../../types';
+import { cn, getInitials } from '../../utils/helpers';
+import { formatRole, hasRole } from '../../utils/roles';
 import NotificationPanel from '../notifications/NotificationPanel';
 
-const navItems = [
+const navItems: { path: string; icon: typeof LayoutDashboard; label: string; roles: Role[] }[] = [
   { path: '/dashboard', icon: LayoutDashboard, label: 'Dashboard', roles: ['ADMIN', 'GRANT_MANAGER', 'APPLICANT'] },
   { path: '/grants', icon: Award, label: 'Grants', roles: ['ADMIN', 'GRANT_MANAGER', 'APPLICANT'] },
   { path: '/applications', icon: FileText, label: 'Applications', roles: ['ADMIN', 'GRANT_MANAGER', 'APPLICANT'] },
@@ -28,7 +30,7 @@ const AppLayout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
     navigate('/login');
   };
 
-  const filteredNav = navItems.filter((item) => user && item.roles.includes(user.role));
+  const filteredNav = navItems.filter((item) => hasRole(user, ...item.roles));
 
   const SidebarContent = () => (
     <div className="flex flex-col h-full">
@@ -73,7 +75,9 @@ const AppLayout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
           {!collapsed && (
             <div className="min-w-0">
               <p className="text-sm font-medium text-gray-900 truncate">{user?.name}</p>
-              <p className="text-xs text-gray-500 truncate capitalize">{user?.role?.replace('_', ' ')}</p>
+              <p className="text-xs text-gray-500 truncate">
+                {user?.roles.map(formatRole).join(' · ')}
+              </p>
             </div>
           )}
         </Link>

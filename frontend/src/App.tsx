@@ -6,6 +6,7 @@ import ProtectedRoute from './components/layout/ProtectedRoute';
 
 import LoginPage from './pages/auth/LoginPage';
 import RegisterPage from './pages/auth/RegisterPage';
+import OAuthCallbackPage from './pages/auth/OAuthCallbackPage';
 import DashboardPage from './pages/dashboard/DashboardPage';
 import GrantsPage from './pages/grants/GrantsPage';
 import GrantDetailPage from './pages/grants/GrantDetailPage';
@@ -30,6 +31,7 @@ const App: React.FC = () => {
         <Routes>
           <Route path="/login" element={<LoginPage />} />
           <Route path="/register" element={<RegisterPage />} />
+          <Route path="/oauth/callback" element={<OAuthCallbackPage />} />
 
           <Route element={<ProtectedRoute />}>
             <Route path="/dashboard" element={<DashboardPage />} />

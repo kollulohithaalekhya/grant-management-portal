@@ -4,6 +4,7 @@ import { useForm } from 'react-hook-form';
 import { Award } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { Input, Button } from '../../components/ui';
+import GoogleButton from '../../components/auth/GoogleButton';
 import toast from 'react-hot-toast';
 
 interface FormData { email: string; password: string; }
@@ -58,10 +59,19 @@ const LoginPage: React.FC = () => {
           </Button>
         </form>
 
+        <div className="flex items-center gap-3 my-5">
+          <span className="h-px flex-1 bg-gray-200" />
+          <span className="text-xs uppercase tracking-wide text-gray-400">or</span>
+          <span className="h-px flex-1 bg-gray-200" />
+        </div>
+
+        <GoogleButton label="Sign in with Google" />
+
         <div className="mt-6 p-4 bg-gray-50 rounded-lg text-xs text-gray-500 space-y-1">
           <p className="font-medium text-gray-700 mb-2">Demo Credentials:</p>
           <p>Admin: admin@grantportal.com / Admin@123</p>
           <p>Manager: manager@grantportal.com / Manager@123</p>
+          <p>Manager + Admin: lead@grantportal.com / Lead@1234</p>
           <p>Applicant: applicant@grantportal.com / Applicant@123</p>
         </div>
 

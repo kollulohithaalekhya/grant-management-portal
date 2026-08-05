@@ -1,23 +1,13 @@
 import React, { useEffect, useState } from 'react';
-import { Search, Users, Shield, ToggleLeft, ToggleRight } from 'lucide-react';
-import { User } from '../../types';
+import { Search, Users, ToggleLeft, ToggleRight } from 'lucide-react';
+import { Role, User } from '../../types';
 import { usersAPI } from '../../api/services';
 import { Badge, Card, Spinner, EmptyState, Pagination, Select, Button } from '../../components/ui';
 import { formatDate, getInitials } from '../../utils/helpers';
+import { ROLE_LABELS } from '../../utils/roles';
 import toast from 'react-hot-toast';
 
-const ROLE_OPTIONS = [
-  { value: '', label: 'All Roles' },
-  { value: 'ADMIN', label: 'Admin' },
-  { value: 'GRANT_MANAGER', label: 'Grant Manager' },
-  { value: 'APPLICANT', label: 'Applicant' },
-];
-
-const ROLE_CHANGE_OPTIONS = [
-  { value: 'ADMIN', label: 'Admin' },
-  { value: 'GRANT_MANAGER', label: 'Grant Manager' },
-  { value: 'APPLICANT', label: 'Applicant' },
-];
+const ROLE_FILTER_OPTIONS = [{ value: '', label: 'All Roles' }, ...ROLE_LABELS];
 
 const UsersPage: React.FC = () => {
   const [users, setUsers] = useState<User[]>([]);
@@ -44,12 +34,27 @@ const UsersPage: React.FC = () => {
 
   const handleSearch = (e: React.FormEvent) => { e.preventDefault(); setPage(1); fetchUsers(); };
 
-  const handleRoleChange = async (userId: string, role: string) => {
+  /**
+   * Roles are a set, so toggling one sends the whole resulting list. The last
+   * remaining role cannot be removed — the API requires at least one.
+   */
+  const handleRoleToggle = async (target: User, role: Role) => {
+    const next = target.roles.includes(role)
+      ? target.roles.filter((r) => r !== role)
+      : [...target.roles, role];
+
+    if (next.length === 0) {
+      toast.error('A user must keep at least one role');
+      return;
+    }
+
     try {
-      await usersAPI.updateRole(userId, role);
-      toast.success('Role updated');
+      await usersAPI.updateRoles(target.id, next);
+      toast.success('Roles updated');
       fetchUsers();
-    } catch { toast.error('Failed to update role'); }
+    } catch (err: any) {
+      toast.error(err.response?.data?.message || 'Failed to update roles');
+    }
   };
 
   const handleToggleActive = async (userId: string, isActive: boolean) => {
@@ -80,7 +85,7 @@ const UsersPage: React.FC = () => {
             />
           </div>
           <Select
-            options={ROLE_OPTIONS}
+            options={ROLE_FILTER_OPTIONS}
             value={roleFilter}
             onChange={(e) => { setRoleFilter(e.target.value); setPage(1); }}
             className="sm:w-44"
@@ -98,14 +103,14 @@ const UsersPage: React.FC = () => {
               <table className="w-full text-sm">
                 <thead className="bg-gray-50 border-b border-gray-100">
                   <tr>
-                    {['User', 'Role', 'Status', 'Joined', 'Provider', 'Actions'].map((h) => (
+                    {['User', 'Roles', 'Status', 'Joined', 'Provider', 'Actions'].map((h) => (
                       <th key={h} className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide">{h}</th>
                     ))}
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-50">
                   {users.map((u) => (
-                    <tr key={u._id} className="hover:bg-gray-50">
+                    <tr key={u.id} className="hover:bg-gray-50">
                       <td className="px-4 py-3">
                         <div className="flex items-center gap-3">
                           <div className="w-8 h-8 bg-primary-600 rounded-full flex items-center justify-center text-white text-xs font-bold">
@@ -118,15 +123,27 @@ const UsersPage: React.FC = () => {
                         </div>
                       </td>
                       <td className="px-4 py-3">
-                        <select
-                          value={u.role}
-                          onChange={(e) => handleRoleChange(u._id, e.target.value)}
-                          className="text-xs border border-gray-200 rounded-md px-2 py-1 bg-white focus:outline-none focus:ring-1 focus:ring-primary-500"
-                        >
-                          {ROLE_CHANGE_OPTIONS.map((o) => (
-                            <option key={o.value} value={o.value}>{o.label}</option>
-                          ))}
-                        </select>
+                        <div className="flex flex-wrap gap-1">
+                          {ROLE_LABELS.map(({ value, label }) => {
+                            const active = u.roles.includes(value);
+                            return (
+                              <button
+                                key={value}
+                                type="button"
+                                onClick={() => handleRoleToggle(u, value)}
+                                aria-pressed={active}
+                                title={active ? `Remove ${label}` : `Grant ${label}`}
+                                className={`text-xs rounded-md px-2 py-1 border transition-colors ${
+                                  active
+                                    ? 'bg-primary-50 border-primary-200 text-primary-700'
+                                    : 'bg-white border-gray-200 text-gray-400 hover:border-gray-300'
+                                }`}
+                              >
+                                {label}
+                              </button>
+                            );
+                          })}
+                        </div>
                       </td>
                       <td className="px-4 py-3">
                         <Badge
@@ -137,13 +154,13 @@ const UsersPage: React.FC = () => {
                       <td className="px-4 py-3 text-gray-500">{formatDate(u.createdAt)}</td>
                       <td className="px-4 py-3">
                         <Badge
-                          label={u.provider}
-                          className={u.provider === 'local' ? 'bg-gray-100 text-gray-600' : 'bg-blue-100 text-blue-600'}
+                          label={u.provider === 'LOCAL' ? 'Password' : 'Google'}
+                          className={u.provider === 'LOCAL' ? 'bg-gray-100 text-gray-600' : 'bg-blue-100 text-blue-600'}
                         />
                       </td>
                       <td className="px-4 py-3">
                         <button
-                          onClick={() => handleToggleActive(u._id, u.isActive)}
+                          onClick={() => handleToggleActive(u.id, u.isActive)}
                           className={`flex items-center gap-1 text-xs font-medium transition-colors ${u.isActive ? 'text-red-500 hover:text-red-700' : 'text-green-500 hover:text-green-700'}`}
                         >
                           {u.isActive ? <ToggleRight className="w-4 h-4" /> : <ToggleLeft className="w-4 h-4" />}

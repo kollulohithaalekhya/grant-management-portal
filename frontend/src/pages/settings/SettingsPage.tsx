@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { User, Lock, Shield } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
+import { formatRole, hasRole } from '../../utils/roles';
 import { usersAPI } from '../../api/services';
 import { Button, Card, Input, Badge } from '../../components/ui';
 import { getInitials } from '../../utils/helpers';
@@ -63,8 +64,10 @@ const SettingsPage: React.FC = () => {
             <h2 className="text-lg font-semibold text-gray-900">{user.name}</h2>
             <p className="text-gray-500 text-sm">{user.email}</p>
             <div className="flex items-center gap-2 mt-1">
-              <Badge label={user.role.replace('_', ' ')} status={user.role} />
-              <Badge label={user.provider} className="bg-gray-100 text-gray-500" />
+              {user.roles.map((role) => (
+                <Badge key={role} label={formatRole(role)} status={role} />
+              ))}
+              <Badge label={formatRole(user.provider)} className="bg-gray-100 text-gray-500" />
             </div>
           </div>
         </div>
@@ -84,8 +87,8 @@ const SettingsPage: React.FC = () => {
         </form>
       </Card>
 
-      {/* Change password — local accounts only */}
-      {user.provider === 'local' && (
+      {/* Change password — password accounts only; Google accounts have none */}
+      {user.provider === 'LOCAL' && (
         <Card>
           <div className="flex items-center gap-2 mb-4">
             <Lock className="w-4 h-4 text-gray-500" />
@@ -129,21 +132,21 @@ const SettingsPage: React.FC = () => {
           <h3 className="font-medium text-gray-900">Permissions</h3>
         </div>
         <div className="space-y-2 text-sm text-gray-600">
-          {user.role === 'ADMIN' && (
+          {hasRole(user, 'ADMIN') && (
             <ul className="space-y-1">
               <li className="flex items-center gap-2"><span className="w-1.5 h-1.5 bg-green-500 rounded-full" /> Full access to all features</li>
               <li className="flex items-center gap-2"><span className="w-1.5 h-1.5 bg-green-500 rounded-full" /> Manage users, roles, and grants</li>
               <li className="flex items-center gap-2"><span className="w-1.5 h-1.5 bg-green-500 rounded-full" /> Review and approve applications</li>
             </ul>
           )}
-          {user.role === 'GRANT_MANAGER' && (
+          {hasRole(user, 'GRANT_MANAGER') && (
             <ul className="space-y-1">
               <li className="flex items-center gap-2"><span className="w-1.5 h-1.5 bg-blue-500 rounded-full" /> Create and manage grants</li>
               <li className="flex items-center gap-2"><span className="w-1.5 h-1.5 bg-blue-500 rounded-full" /> Review and approve/reject applications</li>
               <li className="flex items-center gap-2"><span className="w-1.5 h-1.5 bg-gray-300 rounded-full" /> Cannot manage users</li>
             </ul>
           )}
-          {user.role === 'APPLICANT' && (
+          {hasRole(user, 'APPLICANT') && (
             <ul className="space-y-1">
               <li className="flex items-center gap-2"><span className="w-1.5 h-1.5 bg-purple-500 rounded-full" /> Browse and apply for open grants</li>
               <li className="flex items-center gap-2"><span className="w-1.5 h-1.5 bg-purple-500 rounded-full" /> Track your applications</li>

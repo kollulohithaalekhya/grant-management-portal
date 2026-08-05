@@ -1,9 +1,10 @@
 import React, { useEffect, useState } from 'react';
-import { Link } from 'react-router-dom';
-import { FileText, Search, Filter } from 'lucide-react';
+import { Link, useSearchParams } from 'react-router-dom';
+import { FileText } from 'lucide-react';
 import { Application } from '../../types';
-import { applicationsAPI } from '../../api/services';
+import { applicationsAPI, grantsAPI } from '../../api/services';
 import { useAuth } from '../../context/AuthContext';
+import { hasRole } from '../../utils/roles';
 import { Badge, Card, Spinner, EmptyState, Pagination, Select, Button } from '../../components/ui';
 import { formatCurrency, formatDate } from '../../utils/helpers';
 import toast from 'react-hot-toast';
@@ -18,27 +19,42 @@ const STATUS_OPTIONS = [
 
 const ApplicationsPage: React.FC = () => {
   const { user } = useAuth();
+  const [searchParams] = useSearchParams();
+  const grantId = searchParams.get('grantId');
   const [apps, setApps] = useState<Application[]>([]);
   const [loading, setLoading] = useState(true);
   const [status, setStatus] = useState('');
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
 
-  const isReviewer = user?.role === 'ADMIN' || user?.role === 'GRANT_MANAGER';
+  const isReviewer = hasRole(user, 'ADMIN', 'GRANT_MANAGER');
 
   const fetchApps = async () => {
     setLoading(true);
     try {
       const params: Record<string, string | number> = { page, limit: 10 };
       if (status) params.status = status;
-      const res = await applicationsAPI.getAll(params);
+
+      // Scoped to one grant, the request goes through the ownership-checked
+      // endpoint, which answers 403 for a grant this manager does not own.
+      const res = grantId
+        ? await grantsAPI.getApplications(grantId, params)
+        : await applicationsAPI.getAll(params);
+
       setApps(res.data.data);
       setTotalPages(res.data.pagination.totalPages);
-    } catch { toast.error('Failed to load applications'); }
-    finally { setLoading(false); }
+    } catch (err: any) {
+      toast.error(
+        err.response?.status === 403
+          ? 'You do not have access to applications for this grant'
+          : 'Failed to load applications'
+      );
+      setApps([]);
+      setTotalPages(1);
+    } finally { setLoading(false); }
   };
 
-  useEffect(() => { fetchApps(); }, [page, status]);
+  useEffect(() => { fetchApps(); }, [page, status, grantId]);
 
   const handleWithdraw = async (id: string) => {
     if (!confirm('Withdraw this application?')) return;
@@ -73,14 +89,14 @@ const ApplicationsPage: React.FC = () => {
         <EmptyState
           icon={<FileText className="w-12 h-12" />}
           title="No applications found"
-          description={user?.role === 'APPLICANT' ? 'Browse grants and apply for funding.' : 'No applications to review yet.'}
-          action={user?.role === 'APPLICANT' ? <Link to="/grants"><Button>Browse Grants</Button></Link> : undefined}
+          description={hasRole(user, 'APPLICANT') ? 'Browse grants and apply for funding.' : 'No applications to review yet.'}
+          action={hasRole(user, 'APPLICANT') ? <Link to="/grants"><Button>Browse Grants</Button></Link> : undefined}
         />
       ) : (
         <>
           <div className="space-y-3">
             {apps.map((app) => (
-              <Card key={app._id} className="hover:shadow-md transition-shadow">
+              <Card key={app.id} className="hover:shadow-md transition-shadow">
                 <div className="flex items-start gap-4">
                   <div className="w-10 h-10 bg-gray-100 rounded-lg flex items-center justify-center flex-shrink-0">
                     <FileText className="w-5 h-5 text-gray-500" />
@@ -110,11 +126,11 @@ const ApplicationsPage: React.FC = () => {
                     )}
                   </div>
                   <div className="flex gap-2 flex-shrink-0">
-                    <Link to={`/applications/${app._id}`}>
+                    <Link to={`/applications/${app.id}`}>
                       <Button variant="secondary" size="sm">View</Button>
                     </Link>
-                    {user?.role === 'APPLICANT' && app.status === 'PENDING' && (
-                      <Button variant="danger" size="sm" onClick={() => handleWithdraw(app._id)}>Withdraw</Button>
+                    {hasRole(user, 'APPLICANT') && app.status === 'PENDING' && (
+                      <Button variant="danger" size="sm" onClick={() => handleWithdraw(app.id)}>Withdraw</Button>
                     )}
                   </div>
                 </div>

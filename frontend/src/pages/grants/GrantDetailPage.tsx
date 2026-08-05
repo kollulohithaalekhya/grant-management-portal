@@ -4,6 +4,7 @@ import { ArrowLeft, Award, Calendar, DollarSign, Users, Edit, Trash2, FileText }
 import { Grant } from '../../types';
 import { grantsAPI } from '../../api/services';
 import { useAuth } from '../../context/AuthContext';
+import { hasRole } from '../../utils/roles';
 import { Button, Badge, Card, Spinner } from '../../components/ui';
 import { formatCurrency, formatDate, daysUntilDeadline } from '../../utils/helpers';
 import ApplyModal from '../../components/applications/ApplyModal';
@@ -17,7 +18,7 @@ const GrantDetailPage: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [applyOpen, setApplyOpen] = useState(false);
 
-  const canManage = user?.role === 'ADMIN' || user?.role === 'GRANT_MANAGER';
+  const canManage = hasRole(user, 'ADMIN', 'GRANT_MANAGER');
 
   useEffect(() => {
     const fetch = async () => {
@@ -43,7 +44,7 @@ const GrantDetailPage: React.FC = () => {
   if (!grant) return null;
 
   const days = daysUntilDeadline(grant.deadline);
-  const canApply = user?.role === 'APPLICANT' && grant.status === 'OPEN' && days >= 0;
+  const canApply = hasRole(user, 'APPLICANT') && grant.status === 'OPEN' && days >= 0;
 
   return (
     <div className="max-w-4xl mx-auto space-y-6">
@@ -72,7 +73,7 @@ const GrantDetailPage: React.FC = () => {
                   <Button variant="secondary" size="sm" onClick={() => navigate(`/grants/${id}/edit`)}>
                     <Edit className="w-4 h-4" /> Edit
                   </Button>
-                  {user?.role === 'ADMIN' && (
+                  {hasRole(user, 'ADMIN') && (
                     <Button variant="danger" size="sm" onClick={handleDelete}>
                       <Trash2 className="w-4 h-4" />
                     </Button>
@@ -145,17 +146,17 @@ const GrantDetailPage: React.FC = () => {
                 Apply for this Grant
               </Button>
             )}
-            {user?.role === 'APPLICANT' && grant.status !== 'OPEN' && (
+            {hasRole(user, 'APPLICANT') && grant.status !== 'OPEN' && (
               <p className="text-center text-sm text-gray-400 mt-4">This grant is not accepting applications.</p>
             )}
-            {user?.role === 'APPLICANT' && grant.status === 'OPEN' && days < 0 && (
+            {hasRole(user, 'APPLICANT') && grant.status === 'OPEN' && days < 0 && (
               <p className="text-center text-sm text-red-500 mt-4">The application deadline has passed.</p>
             )}
           </Card>
 
           {canManage && (
             <Card>
-              <Link to={`/applications?grantId=${grant._id}`}>
+              <Link to={`/applications?grantId=${grant.id}`}>
                 <Button variant="secondary" className="w-full">
                   <FileText className="w-4 h-4" /> View Applications
                 </Button>

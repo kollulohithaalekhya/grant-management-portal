@@ -20,7 +20,7 @@ const ApplyModal: React.FC<Props> = ({ open, onClose, grant, onSuccess }) => {
   const onSubmit = async (data: FormData) => {
     setLoading(true);
     try {
-      await applicationsAPI.submit({ ...data, grantId: grant._id, requestedAmount: parseFloat(data.requestedAmount) });
+      await applicationsAPI.submit({ ...data, grantId: grant.id, requestedAmount: parseFloat(data.requestedAmount) });
       reset();
       onSuccess();
     } catch (err: any) {

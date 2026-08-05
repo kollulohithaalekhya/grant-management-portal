@@ -1,17 +1,27 @@
 import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
-import { User } from '../types';
-import { authAPI } from '../api/services';
+import { Role, User } from '../types';
+import { authAPI, googleAuthUrl } from '../api/services';
+import { hasRole as userHasRole } from '../utils/roles';
 
 interface AuthContextType {
   user: User | null;
   loading: boolean;
   login: (email: string, password: string) => Promise<void>;
   register: (name: string, email: string, password: string) => Promise<void>;
+  loginWithGoogle: (redirectTo?: string) => void;
+  /** Completes an OAuth redirect by storing the tokens and loading the user. */
+  completeOAuthLogin: (accessToken: string, refreshToken: string) => Promise<void>;
   logout: () => Promise<void>;
   updateUser: (user: User) => void;
+  hasRole: (...roles: Role[]) => boolean;
 }
 
 const AuthContext = createContext<AuthContextType | null>(null);
+
+const storeTokens = (accessToken: string, refreshToken: string) => {
+  localStorage.setItem('accessToken', accessToken);
+  localStorage.setItem('refreshToken', refreshToken);
+};
 
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [user, setUser] = useState<User | null>(null);
@@ -35,23 +45,32 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const login = async (email: string, password: string) => {
     const res = await authAPI.login({ email, password });
-    const { user, accessToken, refreshToken } = res.data.data;
-    localStorage.setItem('accessToken', accessToken);
-    localStorage.setItem('refreshToken', refreshToken);
-    setUser(user);
+    const { user: loggedIn, accessToken, refreshToken } = res.data.data;
+    storeTokens(accessToken, refreshToken);
+    setUser(loggedIn);
   };
 
   const register = async (name: string, email: string, password: string) => {
     const res = await authAPI.register({ name, email, password });
-    const { user, accessToken, refreshToken } = res.data.data;
-    localStorage.setItem('accessToken', accessToken);
-    localStorage.setItem('refreshToken', refreshToken);
-    setUser(user);
+    const { user: registered, accessToken, refreshToken } = res.data.data;
+    storeTokens(accessToken, refreshToken);
+    setUser(registered);
+  };
+
+  // Full-page navigation: the browser must land on Google's consent screen.
+  const loginWithGoogle = (redirectTo?: string) => {
+    window.location.href = googleAuthUrl(redirectTo);
+  };
+
+  const completeOAuthLogin = async (accessToken: string, refreshToken: string) => {
+    storeTokens(accessToken, refreshToken);
+    const res = await authAPI.me();
+    setUser(res.data.data.user);
   };
 
   const logout = async () => {
     const refreshToken = localStorage.getItem('refreshToken') || '';
-    try { await authAPI.logout(refreshToken); } catch { /* ignore */ }
+    try { await authAPI.logout(refreshToken); } catch { /* the tokens are cleared regardless */ }
     localStorage.removeItem('accessToken');
     localStorage.removeItem('refreshToken');
     setUser(null);
@@ -59,8 +78,22 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const updateUser = (u: User) => setUser(u);
 
+  const hasRole = (...roles: Role[]) => userHasRole(user, ...roles);
+
   return (
-    <AuthContext.Provider value={{ user, loading, login, register, logout, updateUser }}>
+    <AuthContext.Provider
+      value={{
+        user,
+        loading,
+        login,
+        register,
+        loginWithGoogle,
+        completeOAuthLogin,
+        logout,
+        updateUser,
+        hasRole,
+      }}
+    >
       {children}
     </AuthContext.Provider>
   );

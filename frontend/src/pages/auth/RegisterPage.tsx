@@ -4,6 +4,7 @@ import { useForm } from 'react-hook-form';
 import { Award } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { Input, Button } from '../../components/ui';
+import GoogleButton from '../../components/auth/GoogleButton';
 import toast from 'react-hot-toast';
 
 interface FormData { name: string; email: string; password: string; confirmPassword: string; }
@@ -77,6 +78,14 @@ const RegisterPage: React.FC = () => {
             Create Account
           </Button>
         </form>
+
+        <div className="flex items-center gap-3 my-5">
+          <span className="h-px flex-1 bg-gray-200" />
+          <span className="text-xs uppercase tracking-wide text-gray-400">or</span>
+          <span className="h-px flex-1 bg-gray-200" />
+        </div>
+
+        <GoogleButton label="Sign up with Google" />
 
         <p className="text-center text-sm text-gray-500 mt-4">
           Already have an account?{' '}

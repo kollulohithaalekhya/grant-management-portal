@@ -1,14 +1,16 @@
 export type Role = 'ADMIN' | 'GRANT_MANAGER' | 'APPLICANT';
+export type AuthProvider = 'LOCAL' | 'GOOGLE';
 export type GrantStatus = 'OPEN' | 'CLOSED' | 'DRAFT';
 export type AppStatus = 'PENDING' | 'UNDER_REVIEW' | 'APPROVED' | 'REJECTED';
 export type NotifType = 'SUCCESS' | 'ERROR' | 'INFO' | 'WARNING';
 
 export interface User {
-  _id: string;
+  id: string;
   name: string;
   email: string;
-  role: Role;
-  provider: string;
+  /** A user can hold several roles at once. */
+  roles: Role[];
+  provider: AuthProvider;
   avatar: string | null;
   isActive: boolean;
   createdAt: string;
@@ -16,7 +18,7 @@ export interface User {
 }
 
 export interface Grant {
-  _id: string;
+  id: string;
   title: string;
   description: string;
   amount: number;
@@ -24,7 +26,7 @@ export interface Grant {
   status: GrantStatus;
   category: string;
   eligibility: string;
-  createdBy: string;
+  createdById: string;
   createdByName?: string;
   applicationCount?: number;
   createdAt: string;
@@ -32,7 +34,7 @@ export interface Grant {
 }
 
 export interface Application {
-  _id: string;
+  id: string;
   grantId: string;
   applicantId: string;
   status: AppStatus;
@@ -43,18 +45,19 @@ export interface Application {
   contactEmail: string;
   documents: string[];
   reviewNotes: string | null;
-  reviewedBy: string | null;
+  reviewedById: string | null;
   reviewedAt: string | null;
   grantTitle?: string;
   applicantName?: string;
   applicantEmail?: string;
+  reviewerName?: string | null;
   grant?: Grant;
   createdAt: string;
   updatedAt: string;
 }
 
 export interface Notification {
-  _id: string;
+  id: string;
   userId: string;
   title: string;
   message: string;

@@ -1,11 +1,12 @@
 import React, { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { Award, FileText, Users, DollarSign, Clock, CheckCircle, XCircle, TrendingUp } from 'lucide-react';
+import { Award, FileText, Users, DollarSign, Clock, CheckCircle } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
+import { hasRole } from '../../utils/roles';
 import { grantsAPI, applicationsAPI } from '../../api/services';
 import { DashboardStats, Grant, Application } from '../../types';
 import { Card, Badge, Spinner } from '../../components/ui';
-import { formatCurrency, formatDate, daysUntilDeadline } from '../../utils/helpers';
+import { formatCurrency, daysUntilDeadline } from '../../utils/helpers';
 
 const StatCard: React.FC<{ label: string; value: string | number; icon: React.ReactNode; color: string; sub?: string }> = ({ label, value, icon, color, sub }) => (
   <Card className="flex items-center gap-4">
@@ -35,7 +36,7 @@ const DashboardPage: React.FC = () => {
         setRecentGrants(grantsRes.data.data);
         setRecentApps(appsRes.data.data);
 
-        if (user?.role === 'ADMIN' || user?.role === 'GRANT_MANAGER') {
+        if (hasRole(user, 'ADMIN', 'GRANT_MANAGER')) {
           const statsRes = await grantsAPI.getStats();
           setStats(statsRes.data.data);
         }
@@ -68,7 +69,7 @@ const DashboardPage: React.FC = () => {
       )}
 
       {/* Applicant stats */}
-      {user?.role === 'APPLICANT' && (
+      {hasRole(user, 'APPLICANT') && (
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
           <StatCard label="My Applications" value={recentApps.length} icon={<FileText className="w-6 h-6 text-blue-600" />} color="bg-blue-50" />
           <StatCard label="Approved" value={recentApps.filter(a => a.status === 'APPROVED').length} icon={<CheckCircle className="w-6 h-6 text-green-600" />} color="bg-green-50" />
@@ -89,7 +90,7 @@ const DashboardPage: React.FC = () => {
             ) : recentGrants.map((grant) => {
               const days = daysUntilDeadline(grant.deadline);
               return (
-                <Link key={grant._id} to={`/grants/${grant._id}`} className="flex items-start gap-3 p-3 rounded-lg hover:bg-gray-50 group">
+                <Link key={grant.id} to={`/grants/${grant.id}`} className="flex items-start gap-3 p-3 rounded-lg hover:bg-gray-50 group">
                   <div className="w-9 h-9 bg-primary-100 rounded-lg flex items-center justify-center flex-shrink-0">
                     <Award className="w-5 h-5 text-primary-600" />
                   </div>
@@ -120,7 +121,7 @@ const DashboardPage: React.FC = () => {
             {recentApps.length === 0 ? (
               <p className="text-sm text-gray-400 text-center py-4">No applications yet</p>
             ) : recentApps.map((app) => (
-              <Link key={app._id} to={`/applications/${app._id}`} className="flex items-start gap-3 p-3 rounded-lg hover:bg-gray-50 group">
+              <Link key={app.id} to={`/applications/${app.id}`} className="flex items-start gap-3 p-3 rounded-lg hover:bg-gray-50 group">
                 <div className="w-9 h-9 bg-gray-100 rounded-lg flex items-center justify-center flex-shrink-0">
                   <FileText className="w-5 h-5 text-gray-600" />
                 </div>

@@ -1,4 +1,13 @@
-import api from './client';
+import api, { API_URL } from './client';
+
+/**
+ * Entry point of the Google OAuth 2.0 authorization-code flow. The browser is
+ * sent to the API, which redirects on to Google's consent screen.
+ */
+export const googleAuthUrl = (redirectTo?: string) => {
+  const query = redirectTo ? `?redirectTo=${encodeURIComponent(redirectTo)}` : '';
+  return `${API_URL}/auth/google${query}`;
+};
 
 // Auth
 export const authAPI = {
@@ -22,6 +31,9 @@ export const grantsAPI = {
   update: (id: string, data: unknown) => api.put(`/grants/${id}`, data),
   delete: (id: string) => api.delete(`/grants/${id}`),
   getStats: () => api.get('/grants/stats'),
+  /** Applications for one grant — the API rejects callers who don't own it. */
+  getApplications: (grantId: string, params?: Record<string, string | number>) =>
+    api.get(`/grants/${grantId}/applications`, { params }),
 };
 
 // Applications
@@ -40,8 +52,8 @@ export const usersAPI = {
   getAll: (params?: Record<string, string | number>) =>
     api.get('/users', { params }),
   getById: (id: string) => api.get(`/users/${id}`),
-  updateRole: (id: string, role: string) =>
-    api.put(`/users/${id}/role`, { role }),
+  updateRoles: (id: string, roles: string[]) =>
+    api.put(`/users/${id}/roles`, { roles }),
   toggleActive: (id: string) => api.patch(`/users/${id}/toggle-active`),
   updateProfile: (data: { name?: string; avatar?: string }) =>
     api.put('/users/profile', data),
